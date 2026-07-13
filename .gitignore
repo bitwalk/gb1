@@ -1,0 +1,17 @@
+# GBDK build output
+*.asm
+*.cdb
+*.gb
+*.ihx
+*.lk
+*.lst
+*.map
+*.noi
+*.o
+*.rel
+*.rst
+*.sym
+
+# Editor and OS files
+.DS_Store
+*~
