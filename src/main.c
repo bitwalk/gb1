@@ -41,13 +41,13 @@
 
 #define ROW(bits) bits, bits
 
-typedef struct Object {
-    uint8_t x;
-    uint8_t y;
-    uint8_t speed;
-    uint8_t delay;
-    uint8_t type;
-} Object;
+typedef struct ObjectStore {
+    uint8_t x[OBJECT_COUNT];
+    uint8_t y[OBJECT_COUNT];
+    uint8_t speed[OBJECT_COUNT];
+    uint8_t delay[OBJECT_COUNT];
+    uint8_t type[OBJECT_COUNT];
+} ObjectStore;
 
 /* Four 8x8, two-bit Game Boy sprite tiles: a two-tile ship, star, meteor. */
 const uint8_t sprite_tiles[] = {
@@ -94,7 +94,7 @@ const uint8_t background_tiles[] = {
     ROW(0x66),ROW(0x66),ROW(0x66),ROW(0x66),ROW(0x66),ROW(0x66),ROW(0x3C),ROW(0x00)
 };
 
-static Object objects[OBJECT_COUNT];
+static ObjectStore objects;
 static uint8_t background_map[SCREEN_TILES_W * SCREEN_TILES_H];
 static uint8_t player_x;
 static uint16_t score;
@@ -106,13 +106,21 @@ static uint8_t previous_keys;
 static uint8_t letter_tile(char c) {
     if ((c >= '0') && (c <= '9')) return TILE_DIGIT_0 + (uint8_t)(c - '0');
     switch (c) {
-        case 'A': return TILE_A; case 'C': return TILE_C; case 'D': return TILE_D;
+        case 'A': return TILE_A;
+        case 'C': return TILE_C;
+        case 'D': return TILE_D;
         case 'E': return TILE_E;
-        case 'G': return TILE_G; case 'H': return TILE_H; case 'M': return TILE_M;
-        case 'I': return TILE_I; case 'O': return TILE_O; case 'P': return TILE_P;
+        case 'G': return TILE_G;
+        case 'H': return TILE_H;
+        case 'I': return TILE_I;
+        case 'M': return TILE_M;
+        case 'O': return TILE_O;
+        case 'P': return TILE_P;
         case 'R': return TILE_R;
-        case 'S': return TILE_S; case 'T': return TILE_T; case 'V': return TILE_V;
+        case 'S': return TILE_S;
+        case 'T': return TILE_T;
         case 'U': return TILE_U;
+        case 'V': return TILE_V;
         default: return TILE_BLANK;
     }
 }
@@ -225,18 +233,18 @@ static void draw_playfield(void) {
 }
 
 static void respawn_object(uint8_t i, uint8_t initial) {
-    objects[i].x = 10u + (uint8_t)(rand() % 137u);
-    objects[i].y = 8u;
-    objects[i].delay = initial ? (uint8_t)(i * 24u + 8u) : (uint8_t)(rand() & 31u);
-    objects[i].speed = 1u + (uint8_t)((score / 12u) > 2u ? 2u : (score / 12u));
-    objects[i].type = ((rand() & 7u) < (score > 15u ? 3u : 2u)) ? OBJ_METEOR : OBJ_STAR;
-    set_sprite_tile(2u + i, objects[i].type == OBJ_STAR ? SPRITE_STAR : SPRITE_METEOR);
-    move_sprite(2u + i, objects[i].x + 8u, 0u);
+    objects.x[i] = 10u + (uint8_t)(rand() % 137u);
+    objects.y[i] = 8u;
+    objects.delay[i] = initial ? (uint8_t)(i * 24u + 8u) : (uint8_t)(rand() & 31u);
+    objects.speed[i] = 1u + (uint8_t)((score / 12u) > 2u ? 2u : (score / 12u));
+    objects.type[i] = ((rand() & 7u) < (score > 15u ? 3u : 2u)) ? OBJ_METEOR : OBJ_STAR;
+    set_sprite_tile(2u + i, objects.type[i] == OBJ_STAR ? SPRITE_STAR : SPRITE_METEOR);
+    move_sprite(2u + i, objects.x[i] + 8u, 0u);
 }
 
-static uint8_t overlaps_player(const Object *object) {
-    return (object->y + 7u >= PLAYER_Y) && (object->y <= PLAYER_Y + 7u) &&
-           (object->x + 7u >= player_x) && (object->x <= player_x + 15u);
+static uint8_t overlaps_player(uint8_t i) {
+    return (objects.y[i] + 7u >= PLAYER_Y) && (objects.y[i] <= PLAYER_Y + 7u) &&
+           (objects.x[i] + 7u >= player_x) && (objects.x[i] <= player_x + 15u);
 }
 
 static void start_game(void) {
@@ -277,14 +285,14 @@ static void game_loop(void) {
         move_sprite(1u, player_x + 16u, PLAYER_Y + 16u);
 
         for (i = 0u; i != OBJECT_COUNT; ++i) {
-            if (objects[i].delay) {
-                --objects[i].delay;
+            if (objects.delay[i]) {
+                --objects.delay[i];
                 continue;
             }
-            objects[i].y += objects[i].speed;
-            move_sprite(2u + i, objects[i].x + 8u, objects[i].y + 16u);
-            if (overlaps_player(&objects[i])) {
-                if (objects[i].type == OBJ_STAR) {
+            objects.y[i] += objects.speed[i];
+            move_sprite(2u + i, objects.x[i] + 8u, objects.y[i] + 16u);
+            if (overlaps_player(i)) {
+                if (objects.type[i] == OBJ_STAR) {
                     ++score;
                     sound_pickup();
                 } else {
@@ -293,7 +301,7 @@ static void game_loop(void) {
                 }
                 update_hud();
                 respawn_object(i, 0u);
-            } else if (objects[i].y > 144u) {
+            } else if (objects.y[i] > 144u) {
                 respawn_object(i, 0u);
             }
         }
